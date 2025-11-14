@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ml-infra-demo-deployment
+  namespace: prod
   labels:
     app: ml-infra-demo
 spec:
