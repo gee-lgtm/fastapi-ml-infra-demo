@@ -2,10 +2,17 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 import time
+import logging
 
 from prometheus_client import Counter, Histogram, generate_latest, REGISTRY
+from sentence_transformers import SentenceTransformer
+from typing import List
 
 app = FastAPI(title="ML Infra Demo API")
+logger = logging.getLogger("uvicorn.error")
+logger.info("Loading sentence-transformers model...")
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+logger.info("Model loaded.")
 
 # ---- Prometheus metrics ----
 REQUEST_COUNT = Counter(
@@ -32,6 +39,12 @@ class EchoResponse(BaseModel):
     length: int
     processed_at: float
 
+class EmbedRequest(BaseModel):
+    texts: List[str]
+
+class EmbedResponse(BaseModel):
+    embeddings: List[List[float]]
+
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
     start_time = time.time()
@@ -50,6 +63,7 @@ async def metrics_middleware(request: Request, call_next):
 
 @app.get("/health", response_model=HealthResponse)
 def health():
+    logger.info("Health check OK")
     return HealthResponse(status="ok", timestamp=time.time())
 
 @app.post("/echo", response_model=EchoResponse)
@@ -65,3 +79,14 @@ def metrics():
     # Expose Prometheus metrics in plaintext format
     data = generate_latest(REGISTRY)
     return PlainTextResponse(content=data.decode("utf-8"), media_type="text/plain")
+
+@app.post("/embed")
+def embed(request: EmbedRequest):
+    """
+    Takes a list of texts and returns their embeddings.
+    """
+    logger.info(f"Embedding {len(request.texts)} texts")
+    emb = model.encode(request.texts, convert_to_numpy=True).tolist()
+    # returns a vector like [0.01, -0.12, ...]
+    return EmbedResponse(embeddings=emb)
+
