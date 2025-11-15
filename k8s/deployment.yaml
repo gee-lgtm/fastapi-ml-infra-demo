@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: ml-infra-demo
-          image: gansoronzon/fastapi-ml-infra-demo:v0.3
+          image: gansoronzon/fastapi-ml-infra-demo:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
